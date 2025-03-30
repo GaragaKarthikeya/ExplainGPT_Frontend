@@ -7,7 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) throw new Error("❌ GEMINI_API_KEY is missing. Add it to .env.local");
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
 const generationConfig = {
   temperature: 1,
