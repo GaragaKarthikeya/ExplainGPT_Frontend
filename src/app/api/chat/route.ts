@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import fs from "fs";
-import mime from "mime-types";
+//import fs from "fs";
+//import mime from "mime-types";
 
 // Get the Gemini API key from environment variables.
 const apiKey = process.env.GEMINI_API_KEY;
