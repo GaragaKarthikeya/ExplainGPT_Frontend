@@ -1,50 +1,51 @@
 "use client";
-import { useState } from "react";
 
-type Message = {
-  text: string;
-  sender: "user" | "bot"; // Restrict sender to only "user" or "bot"
-};
+import { useState } from "react";
+import axios from "axios";
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<{ text: string; sender: "user" | "bot" }[]>([]);
   const [input, setInput] = useState("");
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = { text: input, sender: "user" };
-    setMessages([...messages, userMessage]);
+    setMessages((prev) => [...prev, { text: input, sender: "user" }]);
 
-    // Simulating bot response
-    setTimeout(() => {
-      const botMessage: Message = { text: "Hello! I'm ExplainGPT 🤖", sender: "bot" };
-      setMessages((prev) => [...prev, botMessage]);
-    }, 1000);
+    try {
+      const response = await axios.post("/api/chat", { message: input });
+      setMessages((prev) => [...prev, { text: response.data.content, sender: "bot" }]);
+    } catch (error) {
+      console.error("API error:", error);
+      setMessages((prev) => [...prev, { text: "Error fetching response", sender: "bot" }]);
+    }
 
     setInput("");
   };
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4">
-      <h1 className="text-3xl font-bold mb-4">ExplainGPT Chat</h1>
-      <div className="w-full max-w-md h-96 overflow-y-auto bg-gray-800 p-4 rounded-lg">
-        {messages.map((msg, index) => (
-          <div key={index} className={`p-2 my-2 rounded-md ${msg.sender === "user" ? "bg-blue-500 text-right" : "bg-gray-700 text-left"}`}>
-            <p>{msg.text}</p>
-          </div>
-        ))}
-      </div>
-      <div className="w-full max-w-md flex mt-4">
-        <input
-          className="flex-1 p-2 bg-gray-700 text-white rounded-l-md outline-none"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-        />
-        <button className="p-2 bg-blue-600 rounded-r-md" onClick={sendMessage}>
-          Send
-        </button>
+      <h1 className="text-4xl font-bold mb-4">Chat with Gemini 🚀</h1>
+      <div className="w-full max-w-md bg-gray-800 p-4 rounded-lg shadow-md">
+        <div className="h-64 overflow-y-auto border-b border-gray-600 mb-2 p-2">
+          {messages.map((msg, index) => (
+            <div key={index} className={`p-2 rounded-lg ${msg.sender === "user" ? "bg-blue-500 text-white self-end" : "bg-gray-700 text-gray-300 self-start"}`}>
+              {msg.text}
+            </div>
+          ))}
+        </div>
+        <div className="flex mt-2">
+          <input
+            type="text"
+            className="flex-grow p-2 border rounded-l-lg bg-gray-700 text-white outline-none"
+            placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button className="p-2 bg-blue-600 text-white rounded-r-lg" onClick={sendMessage}>
+            Send
+          </button>
+        </div>
       </div>
     </main>
   );
