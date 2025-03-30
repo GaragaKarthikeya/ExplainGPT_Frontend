@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
-import { FiSend, FiChevronDown, FiUser, FiMessageSquare, FiMenu, FiPlus, FiClock, FiMoon, FiSun, FiCommand, FiGithub } from "react-icons/fi";
+import { FiSend, FiChevronDown, FiMenu, FiPlus, FiClock, FiMoon, FiSun, FiCommand, FiGithub } from "react-icons/fi";
 import { HiOutlineSparkles } from "react-icons/hi";
 
 type Message = { text: string; sender: "user" | "bot"; timestamp?: string };
