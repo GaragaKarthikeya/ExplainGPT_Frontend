@@ -1,15 +1,12 @@
-import { Analytics } from "@vercel/analytics/react"
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+import { Analytics } from "@vercel/analytics/react";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <title>ExplainGPT</title>
-      </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics /> {/* ✅ Fix: Using Analytics properly */}
+      </body>
     </html>
   );
 }
