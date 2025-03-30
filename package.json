@@ -17,8 +17,11 @@
     "mime-types": "^3.0.1",
     "next": "15.2.4",
     "react": "^19.0.0",
+    "react-confetti": "^6.4.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
+    "react-parallax-tilt": "^1.7.288",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1"
   },
