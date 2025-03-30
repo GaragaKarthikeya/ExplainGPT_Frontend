@@ -1,11 +1,12 @@
 import { Analytics } from "@vercel/analytics/react";
+import "./globals.css";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Analytics /> {/* ✅ Fix: Using Analytics properly */}
+        <Analytics />
       </body>
     </html>
   );
