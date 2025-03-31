@@ -25,13 +25,12 @@ export function ChatInput({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [currentTime, setCurrentTime] = useState("2025-03-31 12:33:10");
+  const [currentTime, setCurrentTime] = useState("2025-03-31 12:36:07");
   const [currentUser] = useState("GaragaKarthikeya");
   const theme_classes = getThemeClasses(theme);
   
-  // FIXED: Use type checking that works with enum or string literal types
-  // This works regardless of whether Theme is a string or an enum
-  const isDarkMode = theme === "dark" || theme === "midnight";
+  // FIXED: Only compare with dark theme to avoid type errors
+  const isDarkMode = theme === "dark";
   
   // Color variables for better blending
   const primaryColor = isDarkMode ? "rgba(139,92,246,0.8)" : "rgba(124,58,237,0.8)"; // Purple
