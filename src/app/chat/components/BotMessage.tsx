@@ -4,11 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 export function BotMessage({ text }: { text: string }) {
   const [staticText, setStaticText] = useState(text);
   const [newPortion, setNewPortion] = useState("");
   const prevTextRef = useRef(text);
+  const currentDateTime = "2025-03-31 00:17:08";
 
   useEffect(() => {
     if (text.length > prevTextRef.current.length) {
@@ -29,92 +32,88 @@ export function BotMessage({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <div className="prose prose-slate dark:prose-invert max-w-none">
+    <div className="prose prose-invert max-w-none">
       <ReactMarkdown 
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm]} 
+        rehypePlugins={[rehypeKatex]}
         components={{
-          code({ node, className, children, ...props }) {
+          code({ className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
             if (!match) {
               return (
-                <code className="bg-opacity-30 bg-gray-700 text-sm rounded px-1 py-0.5" {...props}>
+                <code className="bg-gray-800 text-gray-200 rounded px-1 py-0.5 text-sm" {...props}>
                   {children}
                 </code>
               );
             }
             return (
-              <div className="bg-[#1A1A2E] my-4 rounded-lg overflow-hidden">
-                <div className="bg-[#16162A] px-4 py-1 text-xs text-gray-400 font-mono border-b border-gray-800">
-                  {match[1]}
-                </div>
-                <pre className="p-4 overflow-x-auto">
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                </pre>
-              </div>
+              <pre className="bg-gray-800 p-4 rounded-md overflow-x-auto">
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              </pre>
             );
           },
-          a({ node, children, href, ...props }) {
+          a({ children, href, ...props }) {
             return (
               <a 
                 href={href} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-500 underline transition-colors duration-200" 
+                className="text-blue-400 hover:text-blue-500 underline" 
                 {...props}
               >
                 {children}
               </a>
             );
           },
-          p({ node, children, ...props }) {
+          p({ children, ...props }) {
             return (
               <p className="mb-4 last:mb-0" {...props}>
                 {children}
               </p>
             );
           },
-          ul({ node, children, ...props }) {
-            return (
-              <ul className="mb-4 pl-6 list-disc" {...props}>
-                {children}
-              </ul>
-            );
-          },
-          ol({ node, children, ...props }) {
-            return (
-              <ol className="mb-4 pl-6 list-decimal" {...props}>
-                {children}
-              </ol>
-            );
-          },
-          li({ node, children, ...props }) {
-            return (
-              <li className="mb-1" {...props}>
-                {children}
-              </li>
-            );
-          },
-          h1({ node, children, ...props }) {
+          h1({ children, ...props }) {
             return (
               <h1 className="text-2xl font-bold mt-6 mb-4" {...props}>
                 {children}
               </h1>
             );
           },
-          h2({ node, children, ...props }) {
+          h2({ children, ...props }) {
             return (
-              <h2 className="text-xl font-bold mt-6 mb-3" {...props}>
+              <h2 className="text-xl font-bold mt-5 mb-3" {...props}>
                 {children}
               </h2>
             );
           },
-          h3({ node, children, ...props }) {
+          h3({ children, ...props }) {
             return (
-              <h3 className="text-lg font-bold mt-5 mb-2" {...props}>
+              <h3 className="text-lg font-bold mt-4 mb-2" {...props}>
                 {children}
               </h3>
+            );
+          },
+          ul({ children, ...props }) {
+            return (
+              <ul className="list-disc pl-5 mb-4" {...props}>
+                {children}
+              </ul>
+            );
+          },
+          ol({ children, ...props }) {
+            return (
+              <ol className="list-decimal pl-5 mb-4" {...props}>
+                {children}
+              </ol>
+            );
+          },
+          li({ children, ...props }) {
+            return (
+              <li className="mb-1" {...props}>
+                {children}
+              </li>
             );
           }
         }}
