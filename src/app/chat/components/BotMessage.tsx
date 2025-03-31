@@ -11,7 +11,6 @@ export function BotMessage({ text }: { text: string }) {
   const [staticText, setStaticText] = useState(text);
   const [newPortion, setNewPortion] = useState("");
   const prevTextRef = useRef(text);
-  const currentDateTime = "2025-03-31 00:17:08";
 
   useEffect(() => {
     if (text.length > prevTextRef.current.length) {
