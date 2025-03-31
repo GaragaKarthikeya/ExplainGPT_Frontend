@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { FiMenu, FiSun, FiMoon, FiCommand, FiGithub } from "react-icons/fi";
 import { HiOutlineSparkles } from "react-icons/hi";
-import { Theme, getThemeClasses } from "@/lib/utils";
+import { Theme } from "@/lib/utils";
 
 interface ChatHeaderProps {
   theme: Theme;
@@ -20,7 +20,7 @@ export function ChatHeader({
   togglePromptBar,
   isPromptBarOpen 
 }: ChatHeaderProps) {
-  const theme_classes = getThemeClasses(theme);
+  // Removed unused theme_classes variable to fix linting error
   const isDarkMode = theme === 'dark';
 
   return (

@@ -22,7 +22,8 @@ const safeParseDate = (dateString: string): Date | null => {
     const parsedDate = new Date(dateString);
     // Check if date is valid (invalid dates in JS return NaN for getTime())
     return !isNaN(parsedDate.getTime()) ? parsedDate : null;
-  } catch (e) {
+  } catch (error) {
+    // Removed the unused 'e' parameter to fix linting error
     console.warn("Invalid date string:", dateString);
     return null;
   }

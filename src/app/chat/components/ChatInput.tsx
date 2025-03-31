@@ -25,7 +25,6 @@ export function ChatInput({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const theme_classes = getThemeClasses(theme);
   
   const isDarkMode = theme === "dark";
   
@@ -156,7 +155,7 @@ export function ChatInput({
             {/* Textarea */}
             <textarea
               ref={inputRef}
-              className={`w-full bg-transparent ${theme_classes.text} resize-none outline-none transition-all duration-300 py-4 px-5 pr-14`}
+              className="w-full bg-transparent resize-none outline-none transition-all duration-300 py-4 px-5 pr-14"
               style={{ 
                 minHeight: "54px", 
                 maxHeight: "160px",
