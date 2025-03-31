@@ -59,9 +59,6 @@ export default function ChatPage() {
   const lightBg = "bg-gray-50";
   const lightSecondary = "bg-white";
 
-  const currentUser = "GaragaKarthikeya";
-  const currentDateTime = "2025-03-31 00:33:44";
-
   return (
     <div className={`flex flex-col h-screen ${theme === "dark" ? darkBg : lightBg} transition-colors duration-200`}>
       <ChatHeader 
@@ -115,11 +112,6 @@ export default function ChatPage() {
             />
           )}
         </AnimatePresence>
-      </div>
-      
-      {/* Simple footer with user info */}
-      <div className={`px-4 py-2 text-xs text-center ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
-        {currentUser} • {currentDateTime}
       </div>
     </div>
   );

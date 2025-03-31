@@ -24,8 +24,6 @@ export function Sidebar({
   currentChatId
 }: SidebarProps) {
   const theme_classes = getThemeClasses(theme);
-  const currentUser = "GaragaKarthikeya";
-  const currentDateTime = "2025-03-31 00:13:26";
 
   // Filter duplicate chat IDs
   const uniqueChats = chatHistory.reduce((unique: ChatHistory[], chat) => {
@@ -36,8 +34,13 @@ export function Sidebar({
     return unique;
   }, []);
 
+  // Sort chats by timestamp (newest first) before grouping
+  const sortedChats = [...uniqueChats].sort((a, b) => {
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
+
   // Group chat history by date
-  const groupedHistory = uniqueChats.reduce((groups, chat) => {
+  const groupedHistory = sortedChats.reduce((groups, chat) => {
     const dateKey = getRelativeDate(chat.timestamp);
     if (!groups[dateKey]) {
       groups[dateKey] = [];
@@ -45,6 +48,33 @@ export function Sidebar({
     groups[dateKey].push(chat);
     return groups;
   }, {} as Record<string, ChatHistory[]>);
+
+  // Sort the date keys to ensure consistent order (Today, Yesterday, etc.)
+  const orderedDateKeys = Object.keys(groupedHistory).sort((a, b) => {
+    const dateOrder = {
+      "Today": 0,
+      "Yesterday": 1
+    };
+    
+    // Custom sorting for special date labels
+    if (a in dateOrder && b in dateOrder) {
+      return dateOrder[a as keyof typeof dateOrder] - dateOrder[b as keyof typeof dateOrder];
+    } else if (a in dateOrder) {
+      return -1;
+    } else if (b in dateOrder) {
+      return 1;
+    }
+    
+    // For other dates, compare them as they might be "X days ago", "X weeks ago", or actual dates
+    if (a.includes("days ago") && b.includes("days ago")) {
+      return parseInt(a) - parseInt(b);
+    } else if (a.includes("weeks ago") && b.includes("weeks ago")) {
+      return parseInt(a) - parseInt(b);
+    }
+    
+    // Default to alphabetical sort for other cases
+    return a.localeCompare(b);
+  });
 
   if (!sidebarOpen) return null;
 
@@ -68,15 +98,15 @@ export function Sidebar({
       </button>
       
       <div className="flex-1 overflow-y-auto">
-        {Object.keys(groupedHistory).length > 0 ? (
-          Object.entries(groupedHistory).map(([date, chats]) => (
+        {orderedDateKeys.length > 0 ? (
+          orderedDateKeys.map((date) => (
             <div key={`date-${date}`} className="mb-4">
               <div className={`text-xs font-medium ${theme_classes.textMuted} px-2 py-1 flex items-center gap-1`}>
                 <FiClock size={12} />
                 <span>{date}</span>
               </div>
               <div className="space-y-1 mt-1">
-                {chats.map((chat, index) => (
+                {groupedHistory[date].map((chat, index) => (
                   <button 
                     key={`chat-${chat.id}-${index}`}
                     onClick={() => {
@@ -85,7 +115,7 @@ export function Sidebar({
                     }}
                     className={`w-full text-left ${
                       currentChatId === chat.id 
-                        ? `${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`
+                        ? `${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'}`
                         : ''
                     } ${theme_classes.textSecondary} ${theme_classes.hover} rounded py-2 px-3 text-sm font-medium truncate transition-colors`}
                   >
@@ -100,13 +130,6 @@ export function Sidebar({
             No chat history yet. Start a new conversation!
           </div>
         )}
-      </div>
-      
-      <div className={`pt-3 mt-2 border-t ${theme_classes.border} text-xs ${theme_classes.textMuted}`}>
-        <div className="flex flex-col px-2 pb-1">
-          <span className="mb-1">{currentUser}</span>
-          <span>{currentDateTime}</span>
-        </div>
       </div>
     </motion.div>
   );

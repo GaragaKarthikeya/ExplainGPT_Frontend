@@ -10,7 +10,7 @@ interface ChatInputProps {
   loading: boolean;
   sendMessage: () => void;
   theme: Theme;
-  togglePromptBar?: () => void; // Made optional
+  togglePromptBar?: () => void;
 }
 
 export function ChatInput({ 
@@ -23,8 +23,6 @@ export function ChatInput({
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const theme_classes = getThemeClasses(theme);
-  const currentUser = "GaragaKarthikeya";
-  const currentDateTime = "2025-03-31 00:14:44";
 
   const adjustTextareaHeight = () => {
     if (!inputRef.current) return;
@@ -93,14 +91,6 @@ export function ChatInput({
           >
             <FiSend />
           </button>
-        </div>
-        <div className="flex justify-between items-center mt-3">
-          <p className={`text-xs ${theme_classes.textMuted}`}>
-            {currentUser}
-          </p>
-          <p className={`text-xs ${theme_classes.textMuted}`}>
-            {currentDateTime}
-          </p>
         </div>
       </div>
     </div>
