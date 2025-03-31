@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
-import { FiSend, FiClock, FiUser } from "react-icons/fi";
+import { FiSend } from "react-icons/fi";
 import { Theme, getThemeClasses } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -25,37 +25,11 @@ export function ChatInput({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [currentTime, setCurrentTime] = useState("2025-03-31 12:36:07");
-  const [currentUser] = useState("GaragaKarthikeya");
   const theme_classes = getThemeClasses(theme);
   
-  // FIXED: Only compare with dark theme to avoid type errors
   const isDarkMode = theme === "dark";
   
-  // Color variables for better blending
-  const primaryColor = isDarkMode ? "rgba(139,92,246,0.8)" : "rgba(124,58,237,0.8)"; // Purple
-  const secondaryColor = isDarkMode ? "rgba(79,70,229,0.8)" : "rgba(99,102,241,0.8)"; // Indigo
-  const accentColor = isDarkMode ? "rgba(168,85,247,0.7)" : "rgba(147,51,234,0.7)"; // Violet
-  
-  const glassOpacity = isDarkMode ? "0.15" : "0.1";
-  const borderOpacity = isDarkMode ? "0.2" : "0.15";
-  const glowOpacity = isDarkMode ? "0.25" : "0.15";
-
-  // Update time periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const formattedDate = now.toISOString().split('T')[0];
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      setCurrentTime(`${formattedDate} ${hours}:${minutes}:${seconds}`);
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  // Adjust the textarea height dynamically
+  // Adjust textarea height dynamically
   const adjustTextareaHeight = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.style.height = "inherit";
@@ -78,27 +52,35 @@ export function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (!loading && input.trim()) {
+        sendMessage();
+      }
     } else if (e.key === "/" && input === "" && togglePromptBar) {
       e.preventDefault();
       togglePromptBar();
     }
   };
 
-  const handleSendMessage = () => {
-    if (!loading && input.trim()) {
-      sendMessage();
-    }
-  };
-
   const canSend = !loading && input.trim();
-
-  // Get placeholder color based on theme and focus state
-  const getPlaceholderColor = () => {
-    if (focused) {
-      return isDarkMode ? 'rgba(167, 139, 250, 0.4)' : 'rgba(124, 58, 237, 0.3)';
-    }
-    return isDarkMode ? 'rgba(156, 163, 175, 0.5)' : 'rgba(107, 114, 128, 0.5)';
+  
+  // Theme-aware styles
+  const styles = {
+    primaryColor: isDarkMode ? "rgba(139,92,246,0.8)" : "rgba(124,58,237,0.8)",
+    secondaryColor: isDarkMode ? "rgba(79,70,229,0.8)" : "rgba(99,102,241,0.8)",
+    accentColor: isDarkMode ? "rgba(168,85,247,0.7)" : "rgba(147,51,234,0.7)",
+    placeholderColor: focused 
+      ? (isDarkMode ? 'rgba(167, 139, 250, 0.4)' : 'rgba(124, 58, 237, 0.3)')
+      : (isDarkMode ? 'rgba(156, 163, 175, 0.5)' : 'rgba(107, 114, 128, 0.5)'),
+    textColor: isDarkMode ? 'rgba(229, 231, 235, 0.9)' : 'rgba(31, 41, 55, 0.9)',
+    mutedTextColor: isDarkMode ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.8)',
+    borderColor: isDarkMode ? 'rgba(75, 85, 99, 0.2)' : 'rgba(209, 213, 219, 0.15)',
+    backgroundColor: isDarkMode ? 'rgba(17, 24, 39, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+    boxShadow: focused 
+      ? `0 8px 30px rgba(0,0,0,${isDarkMode ? '0.25' : '0.1'}), 0 0 10px ${isDarkMode ? 'rgba(139,92,246,0.25)' : 'rgba(124,58,237,0.15)'}` 
+      : hovered 
+        ? `0 5px 20px rgba(0,0,0,${isDarkMode ? '0.2' : '0.08'})` 
+        : `0 4px 12px rgba(0,0,0,${isDarkMode ? '0.15' : '0.05'})`,
+    buttonDisabledBg: isDarkMode ? 'rgba(75, 85, 99, 0.7)' : 'rgba(156, 163, 175, 0.7)',
   };
 
   return (
@@ -108,53 +90,8 @@ export function ChatInput({
       transition={{ duration: 0.3 }}
       className="absolute bottom-0 left-0 right-0 pointer-events-none pb-3"
     >
-      {/* Meta info bar */}
-      <div className="relative max-w-2xl mx-auto px-4 mb-1.5 pointer-events-auto">
-        <AnimatePresence>
-          <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 0.8, y: 0 }}
-            transition={{ duration: 0.2, delay: 0.1 }}
-            className="flex items-center justify-between text-xs font-medium px-2"
-            style={{ 
-              color: isDarkMode ? 'rgba(156, 163, 175, 0.8)' : 'rgba(107, 114, 128, 0.8)' 
-            }}
-          >
-            <div className="flex items-center space-x-1">
-              <FiUser className="h-3 w-3" />
-              <span>{currentUser}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <FiClock className="h-3 w-3" />
-              <span>{currentTime}</span>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
       {/* Input Container */}
       <div className="relative max-w-2xl mx-auto px-4 pb-2 pointer-events-auto">
-        {/* Subtle floating indicator when focused */}
-        <AnimatePresence>
-          {focused && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 0.9, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.2 }}
-              className={`absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium backdrop-blur-md px-2.5 py-1 rounded-full ${
-                isDarkMode ? 'bg-gray-900/70' : 'bg-white/70'
-              }`}
-              style={{
-                color: isDarkMode ? 'rgba(167, 139, 250, 0.9)' : 'rgba(124, 58, 237, 0.9)',
-                boxShadow: `0 2px 10px ${isDarkMode ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.1)'}`
-              }}
-            >
-              {canSend ? "Press Enter to send" : "Type something to send"}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <motion.div 
           initial={{ scale: 0.98 }}
           animate={{ 
@@ -169,40 +106,32 @@ export function ChatInput({
           onHoverStart={() => setHovered(true)}
           onHoverEnd={() => setHovered(false)}
           className="relative overflow-hidden rounded-[1.2rem]"
-          style={{
-            boxShadow: focused 
-              ? `0 8px 30px rgba(0,0,0,${isDarkMode ? '0.25' : '0.1'}), 0 0 10px ${primaryColor.replace('0.8', glowOpacity)}` 
-              : hovered 
-                ? `0 5px 20px rgba(0,0,0,${isDarkMode ? '0.2' : '0.08'})` 
-                : `0 4px 12px rgba(0,0,0,${isDarkMode ? '0.15' : '0.05'})`
-          }}
+          style={{ boxShadow: styles.boxShadow }}
         >
-          {/* Main Container with Transparency */}
+          {/* Input field container */}
           <div 
-            className={`relative border rounded-[1.2rem] overflow-hidden backdrop-blur-md
-              transition-all duration-300`}
+            className="relative border rounded-[1.2rem] overflow-hidden transition-all duration-300"
             style={{
-              borderColor: isDarkMode 
-                ? `rgba(75, 85, 99, ${borderOpacity})` 
-                : `rgba(209, 213, 219, ${borderOpacity})`,
-              backgroundColor: isDarkMode 
-                ? `rgba(17, 24, 39, ${glassOpacity})` 
-                : `rgba(255, 255, 255, ${glassOpacity})`
+              borderColor: styles.borderColor,
+              backgroundColor: styles.backgroundColor
             }}
           >
-            {/* Animated Gradient Underlay - Subtle and Blended */}
-            <div 
-              className={`absolute inset-0 pointer-events-none ${focused ? 'animate-gradientSoft' : ''}`}
-              style={{
-                backgroundImage: focused 
-                  ? `linear-gradient(120deg, ${primaryColor.replace('0.8', '0.05')}, ${secondaryColor.replace('0.8', '0.02')}, ${accentColor.replace('0.7', '0.05')})` 
-                  : 'none',
-                backgroundSize: '200% 200%',
-                opacity: focused ? 0.7 : 0
-              }}
-            />
+            {/* Gradient effect when focused */}
+            {focused && (
+              <div 
+                className="absolute inset-0 pointer-events-none animate-gradientSoft"
+                style={{
+                  backgroundImage: `linear-gradient(120deg, 
+                    ${styles.primaryColor.replace('0.8', '0.05')}, 
+                    ${styles.secondaryColor.replace('0.8', '0.02')}, 
+                    ${styles.accentColor.replace('0.7', '0.05')})`,
+                  backgroundSize: '200% 200%',
+                  opacity: 0.7
+                }}
+              />
+            )}
             
-            {/* Environmental Reflection - Adapts to theme */}
+            {/* Light reflection effect */}
             <div 
               className="absolute inset-0 transition-opacity duration-300 pointer-events-none"
               style={{
@@ -213,27 +142,26 @@ export function ChatInput({
               }}
             />
 
-            {/* Subtle Gleam - Soft and Integrated */}
-            <div 
-              className={`absolute -inset-full h-[400%] w-[40%] transition-all duration-1000 pointer-events-none ${
-                focused ? 'animate-slowGleam' : 'opacity-0'
-              }`} 
-              style={{
-                backgroundImage: `linear-gradient(90deg, transparent, ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)'}, transparent)`,
-                transform: 'rotate(35deg)',
-                opacity: focused ? 0.8 : 0
-              }}
-            />
+            {/* Gleam animation effect when focused */}
+            {focused && (
+              <div 
+                className="absolute -inset-full h-[400%] w-[40%] transition-all duration-1000 pointer-events-none animate-slowGleam" 
+                style={{
+                  backgroundImage: `linear-gradient(90deg, transparent, ${isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)'}, transparent)`,
+                  transform: 'rotate(35deg)',
+                }}
+              />
+            )}
 
-            {/* Textarea with Theme-Adaptive Styling */}
+            {/* Textarea */}
             <textarea
               ref={inputRef}
               className={`w-full bg-transparent ${theme_classes.text} resize-none outline-none transition-all duration-300 py-4 px-5 pr-14`}
               style={{ 
                 minHeight: "54px", 
                 maxHeight: "160px",
-                color: isDarkMode ? 'rgba(229, 231, 235, 0.9)' : 'rgba(31, 41, 55, 0.9)',
-                caretColor: primaryColor
+                color: styles.textColor,
+                caretColor: styles.primaryColor
               }}
               placeholder="Type your message..."
               value={input}
@@ -247,7 +175,7 @@ export function ChatInput({
               rows={1}
             />
 
-            {/* Character Count - Only visible when typing, perfectly blended */}
+            {/* Character counter */}
             <AnimatePresence>
               {input.length > 0 && (
                 <motion.div
@@ -255,50 +183,53 @@ export function ChatInput({
                   animate={{ opacity: 0.7, y: 0 }}
                   exit={{ opacity: 0, y: 5 }}
                   className="absolute bottom-2 left-5 text-[10px] font-medium"
-                  style={{ 
-                    color: isDarkMode ? 'rgba(156, 163, 175, 0.7)' : 'rgba(107, 114, 128, 0.7)'
-                  }}
+                  style={{ color: styles.mutedTextColor.replace('0.8', '0.7') }}
                 >
                   {input.length} characters
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Beautifully Blended Send Button */}
+            {/* Send button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleSendMessage}
+              onClick={() => {
+                if (canSend) {
+                  sendMessage();
+                }
+              }}
               disabled={!canSend}
               aria-label="Send message"
-              className="absolute right-3 bottom-[0.6rem] flex items-center justify-center w-10 h-10 rounded-full overflow-hidden transition-all duration-300"
+              className="absolute right-3 bottom-[0.6rem] flex items-center justify-center w-10 h-10 rounded-full overflow-hidden transition-all duration-300 border"
               style={{
+                borderColor: styles.borderColor,
                 boxShadow: canSend 
                   ? `0 4px 10px ${isDarkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)'}` 
                   : 'none'
               }}
             >
-              {/* Button Background - Perfectly Blended Gradient */}
+              {/* Button background */}
               <div 
                 className={`absolute inset-0 transition-all duration-300 ${
                   canSend ? 'opacity-100 animate-gradientSoft' : 'opacity-0'
                 }`}
                 style={{
-                  backgroundImage: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor}, ${accentColor})`,
+                  backgroundImage: `linear-gradient(135deg, ${styles.primaryColor}, ${styles.secondaryColor}, ${styles.accentColor})`,
                   backgroundSize: '200% 200%',
                 }}
               />
               
-              {/* Disabled State - Theme Adaptive */}
+              {/* Disabled state */}
               <div 
                 className="absolute inset-0 transition-opacity duration-300"
                 style={{
-                  backgroundColor: isDarkMode ? 'rgba(75, 85, 99, 0.7)' : 'rgba(156, 163, 175, 0.7)',
+                  backgroundColor: styles.buttonDisabledBg,
                   opacity: canSend ? 0 : 1
                 }}
               />
               
-              {/* Icon Container */}
+              {/* Button icon */}
               <div className={`relative z-10 text-white ${canSend && !loading ? 'animate-subtle-pulse' : ''}`}>
                 {loading ? (
                   <div 
@@ -317,12 +248,12 @@ export function ChatInput({
               </div>
             </motion.button>
 
-            {/* Ambient Bottom Glow - Subtle enhancer */}
+            {/* Bottom glow when focused */}
             {focused && (
               <div 
                 className="absolute bottom-0 left-[10%] right-[10%] h-[1px] rounded-full transition-opacity duration-500"
                 style={{
-                  backgroundImage: `linear-gradient(to right, transparent, ${primaryColor.replace('0.8', '0.3')}, transparent)`,
+                  backgroundImage: `linear-gradient(to right, transparent, ${styles.primaryColor.replace('0.8', '0.3')}, transparent)`,
                   opacity: 0.6
                 }}
               />
@@ -331,7 +262,7 @@ export function ChatInput({
         </motion.div>
       </div>
 
-      {/* CSS for custom animations - Softer and more subtle */}
+      {/* CSS animations */}
       <style jsx global>{`
         @keyframes gradientSoft {
           0% { background-position: 0% 50%; }
@@ -365,7 +296,7 @@ export function ChatInput({
         }
 
         textarea::placeholder {
-          color: ${getPlaceholderColor()};
+          color: ${styles.placeholderColor};
           opacity: 1;
         }
       `}</style>

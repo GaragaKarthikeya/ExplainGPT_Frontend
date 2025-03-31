@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiChevronDown, FiClock, FiUser, FiMessageSquare, FiSend } from "react-icons/fi";
+import { FiChevronDown, FiClock, FiUser, FiMessageSquare} from "react-icons/fi";
 import { HiOutlineSparkles, HiOutlineLightBulb } from "react-icons/hi";
 import { Theme, getThemeClasses, Message } from "@/lib/utils";
 import { BotMessage } from "./BotMessage";
