@@ -1,12 +1,5 @@
 export type Theme = "dark" | "light";
 
-export interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "bot";
-  timestamp: string;
-}
-
 export interface ChatHistory {
   id: string;
   title: string;
@@ -15,70 +8,85 @@ export interface ChatHistory {
   preview: string;
 }
 
-export function getCurrentDateTime(): string {
-  return "2025-03-31 00:04:15";
+export interface Message {
+  id: string; // Added id property
+  text: string;
+  sender: "user" | "bot";
+  timestamp: string;
 }
 
-export function getTimeFromDateTime(datetime: string): string {
-  return datetime.split(' ')[1].substring(0, 5); // HH:MM format
+export function getCurrentDateTime(): string {
+  const now = new Date();
+  return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export function getFormattedDate(): string {
-  return "2025-03-31";
+  // Format current date as YYYY-MM-DD
+  const now = new Date();
+  return now.toISOString().split('T')[0];
+}
+
+export function getFullDateTime(): string {
+  // Format as YYYY-MM-DD HH:MM:SS
+  const now = new Date();
+  return `${now.toISOString().split('T')[0]} ${now.toTimeString().split(' ')[0]}`;
 }
 
 export function getRelativeDate(dateString: string): string {
-  const today = "2025-03-31";
-  const yesterday = "2025-03-30";
-  
-  if (dateString.startsWith(today)) return "Today";
-  if (dateString.startsWith(yesterday)) return "Yesterday";
-  
-  // For demo purposes - actual implementation would calculate real relative dates
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString();
+}
+
+// Add the generateMessageId function
+export function generateMessageId(): string {
+  return 'msg_' + Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9);
 }
 
 export const getThemeClasses = (theme: Theme) => {
   return theme === "dark" 
     ? {
-        bg: "bg-[#0F172A]", // Changed to a deeper blue for premium look
-        header: "bg-[#1E293B]",
-        sidebar: "bg-[#1E293B]",
-        chatBg: "bg-[#0F172A]",
-        userMessage: "bg-[#334155]",
-        botMessage: "bg-[#1E293B]",
-        input: "bg-[#334155] border-[#475569]",
+        bg: "bg-slate-900",
+        header: "bg-slate-800",
+        sidebar: "bg-slate-900",
+        chatBg: "bg-slate-800",
+        userMessage: "bg-slate-700",
+        botMessage: "bg-slate-800",
+        input: "bg-slate-700 border-slate-600",
         text: "text-white",
         textSecondary: "text-slate-300",
         textMuted: "text-slate-400",
-        hover: "hover:bg-[#334155]",
-        button: "bg-indigo-600 hover:bg-indigo-700",
+        hover: "hover:bg-slate-700",
+        button: "bg-blue-600 hover:bg-blue-700",
         buttonSecondary: "bg-slate-700 hover:bg-slate-600",
-        gradientStart: "from-[#0F172A]",
-        iconBg: "bg-[#334155]",
-        border: "border-[#334155]",
+        gradientStart: "from-slate-900",
+        iconBg: "bg-slate-700",
+        border: "border-slate-600",
+        boxShadow: "shadow-md shadow-black/20",
       }
     : {
         bg: "bg-gray-50",
         header: "bg-white",
         sidebar: "bg-white",
         chatBg: "bg-gray-50",
-        userMessage: "bg-indigo-50",
+        userMessage: "bg-blue-50",
         botMessage: "bg-white",
         input: "bg-white border-gray-200",
         text: "text-gray-900",
         textSecondary: "text-gray-700",
         textMuted: "text-gray-500",
         hover: "hover:bg-gray-100",
-        button: "bg-indigo-600 hover:bg-indigo-700",
+        button: "bg-blue-600 hover:bg-blue-700",
         buttonSecondary: "bg-gray-200 hover:bg-gray-300 text-gray-700",
         gradientStart: "from-gray-50",
         iconBg: "bg-gray-200",
         border: "border-gray-200",
+        boxShadow: "shadow-md shadow-gray-200/50",
       };
 };
-
-export function generateMessageId(): string {
-  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
