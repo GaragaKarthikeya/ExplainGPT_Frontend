@@ -8,6 +8,26 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * Team: Karthikeya, Abhinav, Adithya
  */
 
+// Type definitions for message history
+interface UserMessage {
+  sender: "user";
+  text: string;
+}
+
+interface BotMessage {
+  sender: "bot";
+  text: string;
+}
+
+type MessageHistory = (UserMessage | BotMessage)[];
+
+interface FormattedMessage {
+  role: "user" | "model";
+  parts: {
+    text: string;
+  }[];
+}
+
 // Environment validation
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -160,29 +180,43 @@ const enhanceUserMessage = (message: string, username: string): string => {
 
 /**
  * Message formatter to ensure proper structure for Gemini API
- * @param {Array} history - Message history array
- * @returns {Array} Properly formatted history
+ * @param {MessageHistory} history - Message history array
+ * @returns {FormattedMessage[]} Properly formatted history
  */
-const formatMessageHistory = (history: any[]): any[] => {
+const formatMessageHistory = (history: MessageHistory): FormattedMessage[] => {
   if (!Array.isArray(history)) return [];
   
-  // Convert from our format to Gemini's expected format
-  let formattedHistory = history.map((msg) => ({
-    role: msg.sender === "bot" ? "model" : "user",
-    parts: [{ text: msg.text }],
-  }));
+  // Convert from our format to Gemini's expected format with explicit typing
+  const formattedHistory: FormattedMessage[] = history.map((msg) => {
+    // Explicitly define the role as either "user" or "model"
+    const role: "user" | "model" = msg.sender === "bot" ? "model" : "user";
+    
+    return {
+      role: role,
+      parts: [{ text: msg.text }]
+    };
+  });
   
   // Limit to last 10 messages for context window management
-  formattedHistory = formattedHistory.slice(-10);
+  const limitedHistory = formattedHistory.slice(-10);
   
   // Ensure the conversation starts with a user message
-  const firstUserIndex = formattedHistory.findIndex((h) => h.role === "user");
+  const firstUserIndex = limitedHistory.findIndex((h) => h.role === "user");
   if (firstUserIndex > 0) {
-    formattedHistory = formattedHistory.slice(firstUserIndex);
+    return limitedHistory.slice(firstUserIndex);
   }
   
-  return formattedHistory;
+  return limitedHistory;
 };
+
+/**
+ * Request body interface
+ */
+interface ChatRequestBody {
+  message: string;
+  history: MessageHistory;
+  username?: string;
+}
 
 /**
  * Main API route handler
@@ -190,8 +224,8 @@ const formatMessageHistory = (history: any[]): any[] => {
 export async function POST(req: Request) {
   try {
     // Parse and validate request body
-    const body = await req.json();
-    const { message, history, username = "GaragaKarthikeya" } = body;
+    const body = await req.json() as ChatRequestBody;
+    const { message, history = [], username = "GaragaKarthikeya" } = body;
     
     if (!message || typeof message !== "string") {
       return NextResponse.json(
