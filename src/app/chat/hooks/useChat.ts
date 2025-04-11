@@ -158,22 +158,35 @@ export function useChat() {
       const decoder = new TextDecoder();
       let botMessage = "";
       const botMessageId = botMessagePlaceholder.id;
-
+      
+      // For better performance - use a buffer and update less frequently
+      let buffer = "";
+      let lastUpdateTime = Date.now();
+      const updateInterval = 20; // Update every 20ms at most
+      
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
         const chunk = decoder.decode(value, { stream: true });
         botMessage += chunk;
+        buffer += chunk;
         
-        setState(prev => {
-          const updatedMessages = prev.messages.map(msg => 
-            msg.id === botMessageId 
-              ? { ...msg, text: botMessage } 
-              : msg
-          );
-          return { ...prev, messages: updatedMessages };
-        });
+        // Only update the UI if we have accumulated enough text or enough time has passed
+        const now = Date.now();
+        if (buffer.length > 3 || now - lastUpdateTime > updateInterval) {
+          setState(prev => {
+            const updatedMessages = prev.messages.map(msg => 
+              msg.id === botMessageId 
+                ? { ...msg, text: botMessage } 
+                : msg
+            );
+            return { ...prev, messages: updatedMessages };
+          });
+          
+          buffer = "";
+          lastUpdateTime = now;
+        }
       }
 
       // Final update with complete message

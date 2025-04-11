@@ -291,14 +291,15 @@ export function MessageList({
       className={`flex-1 overflow-y-auto scroll-smooth custom-scrollbar ${theme_classes.chatBg}`}
     >
       <div className="pb-32 pt-6 mx-auto w-full max-w-3xl px-4">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="sync">
           {messages.map((msg, index) => {
             const isUser = msg.sender === "user";
             const formattedTime = formatMessageTime(msg.timestamp);
+            const isStreaming = !isUser && index === messages.length - 1 && loading;
             
             return (
               <motion.div
-                key={`message-${index}-${msg.timestamp}`}
+                key={`message-${msg.id}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -356,7 +357,7 @@ export function MessageList({
                       {isUser ? (
                         <div className="whitespace-pre-wrap">{msg.text}</div>
                       ) : (
-                        <BotMessage text={msg.text} />
+                        <BotMessage text={msg.text} theme={theme} />
                       )}
                     </div>
                   </div>
@@ -365,8 +366,8 @@ export function MessageList({
             );
           })}
           
-          {/* Enhanced loading animation */}
-          {loading && (
+          {/* Enhanced loading animation - ONLY show when no messages or first message is being sent */}
+          {loading && messages.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

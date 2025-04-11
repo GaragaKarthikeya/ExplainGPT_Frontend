@@ -26,10 +26,14 @@ export function BotMessage({ text, theme = "dark" }: BotMessageProps) {
     if (text.length > prevTextRef.current.length) {
       const diff = text.slice(prevTextRef.current.length);
       setNewPortion(diff);
+      
+      // Update static text immediately for most of the content
+      // but keep a very small delay to create a subtle typing effect
       const timer = setTimeout(() => {
         setStaticText(text);
         setNewPortion("");
-      }, 500);
+      }, 50); // Ultra-responsive 50ms delay for smoother streaming
+      
       return () => clearTimeout(timer);
     } else {
       // If text is completely replaced or shortened
@@ -190,7 +194,7 @@ export function BotMessage({ text, theme = "dark" }: BotMessageProps) {
         {staticText}
       </ReactMarkdown>
       {newPortion && (
-        <span className="animate-pulse text-indigo-500 dark:text-indigo-400">
+        <span className="text-indigo-500 dark:text-indigo-400 stream-text">
           {newPortion}
         </span>
       )}
@@ -219,6 +223,17 @@ export function BotMessage({ text, theme = "dark" }: BotMessageProps) {
         .bot-message table {
           border-collapse: collapse;
           width: 100%;
+        }
+        
+        .stream-text {
+          position: relative;
+          border-right: 2px solid ${isDarkMode ? 'rgba(139, 92, 246, 0.7)' : 'rgba(99, 102, 241, 0.7)'};
+          animation: streamCursor 0.8s step-end infinite;
+        }
+
+        @keyframes streamCursor {
+          0%, 100% { border-color: transparent; }
+          50% { border-color: ${isDarkMode ? 'rgba(139, 92, 246, 0.7)' : 'rgba(99, 102, 241, 0.7)'}; }
         }
       `}</style>
     </div>
