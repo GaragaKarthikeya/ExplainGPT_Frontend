@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiChevronDown, FiClock, FiUser, FiMessageSquare} from "react-icons/fi";
 import { HiOutlineSparkles, HiOutlineLightBulb } from "react-icons/hi";
 import { Theme, getThemeClasses, Message } from "@/lib/utils";
 import { BotMessage } from "./BotMessage";
+import TypingIndicator from "./TypingIndicator";
 
 interface MessageListProps {
   messages: Message[];
@@ -393,8 +394,7 @@ export function MessageList({
                       <HiOutlineSparkles className="text-white" />
                     </motion.div>
                   </div>
-                </div>
-                <div className="flex-1">
+                </div>                  <div className="flex-1">
                   <div className="flex justify-between items-center mb-1.5">
                     <div className={`font-medium ${theme_classes.text}`}>
                       Trinity AI
@@ -405,13 +405,7 @@ export function MessageList({
                     </div>
                   </div>
                   
-                  <div className="flex items-center h-6">
-                    <div className="typing-animation">
-                      <span className="dot"></span>
-                      <span className="dot"></span>
-                      <span className="dot"></span>
-                    </div>
-                  </div>
+                  <TypingIndicator theme={theme} />
                 </div>
               </div>
             </motion.div>

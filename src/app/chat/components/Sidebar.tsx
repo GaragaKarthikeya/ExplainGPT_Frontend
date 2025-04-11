@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiPlus, FiClock, FiMessageSquare, FiChevronRight } from "react-icons/fi";
+import { FiPlus, FiClock, FiMessageSquare, FiChevronRight, FiX } from "react-icons/fi";
 import { HiOutlineSparkles } from "react-icons/hi";
 import { Theme, getThemeClasses, ChatHistory } from "@/lib/utils";
 
@@ -16,16 +16,57 @@ interface SidebarProps {
   currentChatId: string | null;
 }
 
-// Safe date parsing function to handle invalid dates
+// Safe date parsing function to handle invalid dates with more robust handling
 const safeParseDate = (dateString: string): Date | null => {
   try {
-    const parsedDate = new Date(dateString);
-    // Check if date is valid (invalid dates in JS return NaN for getTime())
-    return !isNaN(parsedDate.getTime()) ? parsedDate : null;
+    if (!dateString) return null;
+    
+    // Try to parse as ISO format first (most common format)
+    let parsedDate = new Date(dateString);
+    
+    // Check if date is valid
+    if (!isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+    
+    // Try to parse numeric timestamp (milliseconds since epoch)
+    if (/^\d+$/.test(dateString)) {
+      parsedDate = new Date(parseInt(dateString));
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+    
+    // Try different format patterns (MM/DD/YYYY, DD/MM/YYYY, etc.)
+    const formats = [
+      // Try to extract parts from different common formats
+      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/,
+      /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/
+    ];
+    
+    for (const format of formats) {
+      const match = dateString.match(format);
+      if (match) {
+        // Different possible date formations
+        const possibleDates = [
+          new Date(`${match[1]}-${match[2]}-${match[3]}`),
+          new Date(`${match[3]}-${match[2]}-${match[1]}`),
+          new Date(`${match[3]}-${match[1]}-${match[2]}`)
+        ];
+        
+        // Find first valid date
+        const validDate = possibleDates.find(date => !isNaN(date.getTime()));
+        if (validDate) return validDate;
+      }
+    }
+    
+    // Default fallback to current date instead of null
+    // This ensures we don't get "Unknown date" for chats happening now
+    console.warn("Using today's date as fallback for:", dateString);
+    return new Date();
   } catch (error) {
-    // Removed the unused 'e' parameter to fix linting error
-    console.warn("Invalid date string:", dateString);
-    return null;
+    console.warn("Invalid date string:", dateString, error);
+    return new Date(); // Use current date as fallback
   }
 };
 
@@ -72,6 +113,25 @@ export function Sidebar({
   const isDarkMode = theme === 'dark';
   const [buttonHovered, setButtonHovered] = useState(false);
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    // Check if window is available (client-side)
+    if (typeof window !== 'undefined') {
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < 640);
+      };
+      
+      // Initial check
+      handleResize();
+      
+      // Add event listener for window resize
+      window.addEventListener('resize', handleResize);
+      
+      // Clean up
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Filter duplicate chat IDs
   const uniqueChats = chatHistory.reduce((unique: ChatHistory[], chat) => {
@@ -133,212 +193,254 @@ export function Sidebar({
       return weeksA - weeksB;
     }
     
+    // For month/day format dates (e.g., Apr 11)
+    // This ensures older dates are shown at the bottom
+    try {
+      // Attempt to parse and compare actual dates for other formats
+      const currentYear = new Date().getFullYear();
+      const dateA = new Date(`${a} ${currentYear}`);
+      const dateB = new Date(`${b} ${currentYear}`);
+      
+      if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+        return dateA.getTime() - dateB.getTime();
+      }
+    } catch (e) {
+      // If date parsing fails, fall back to string comparison
+    }
+    
     return a.localeCompare(b);
   });
 
-  if (!sidebarOpen) return null;
-
   return (
-    <motion.div
-      initial={{ x: -280 }}
-      animate={{ x: 0 }}
-      exit={{ x: -280 }}
-      transition={{ duration: 0.2 }}
-      className={`w-72 ${theme_classes.sidebar} border-r ${theme_classes.border} flex flex-col z-10 absolute sm:relative h-full transition-colors duration-200`}
-      style={{
-        boxShadow: isDarkMode ? '0 0 15px rgba(0,0,0,0.2)' : '0 0 15px rgba(0,0,0,0.05)',
-      }}
-    >
-      {/* Header section */}
-      <div className="px-3 pt-3 pb-2">
-        {/* Animated gradient new chat button */}
-        <motion.button 
-          onClick={() => {
-            resetChat();
-            if (window.innerWidth < 640) setSidebarOpen(false);
-          }}
-          onMouseEnter={() => setButtonHovered(true)}
-          onMouseLeave={() => setButtonHovered(false)}
-          className="w-full rounded-md py-2 px-3 text-sm flex items-center justify-center gap-2 mb-2 relative overflow-hidden"
-          style={{
-            boxShadow: buttonHovered 
-              ? isDarkMode 
-                ? '0 4px 12px rgba(129, 140, 248, 0.3)' 
-                : '0 4px 12px rgba(129, 140, 248, 0.2)'
-              : isDarkMode 
-                ? '0 2px 6px rgba(129, 140, 248, 0.2)' 
-                : '0 2px 6px rgba(129, 140, 248, 0.1)',
-          }}
-          whileTap={{ scale: 0.98 }}
-        >
-          {/* Background gradient with animation */}
-          <motion.div 
-            className="absolute inset-0"
-            initial={{ backgroundPosition: "0% 50%" }}
-            animate={{ 
-              backgroundPosition: buttonHovered ? "100% 50%" : "0% 50%",
-            }}
-            transition={{ duration: 3, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
-            style={{
-              background: "linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899, #8b5cf6, #3b82f6)",
-              backgroundSize: "300% 300%",
-              filter: buttonHovered ? "brightness(1.1)" : "brightness(1)",
-            }}
-          />
+    <AnimatePresence>
+      {sidebarOpen && (
+        <>
+          {/* Overlay for mobile */}
+          {isMobile && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 z-[5]"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
           
-          {/* Gleam effect */}
-          <motion.div 
-            className="absolute inset-0 opacity-30"
-            initial={{ x: "-100%", skew: "-20deg" }}
-            animate={{ x: "200%" }}
-            transition={{ 
-              duration: buttonHovered ? 1.5 : 0, 
-              ease: "easeInOut", 
-              repeat: Infinity, 
-              repeatDelay: 2 
-            }}
-            style={{
-              width: "50%",
-              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)",
-              display: buttonHovered ? "block" : "none"
-            }}
-          />
-          
-          {/* Button content */}
           <motion.div
-            className="relative flex items-center justify-center gap-2 text-white font-medium"
-            animate={{ scale: buttonHovered ? 1.03 : 1 }}
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
             transition={{ duration: 0.2 }}
+            className={`w-72 ${theme_classes.sidebar} border-r ${theme_classes.border} flex flex-col z-10 absolute sm:relative h-full transition-colors duration-200`}
+            style={{
+              boxShadow: isDarkMode ? '0 0 15px rgba(0,0,0,0.2)' : '0 0 15px rgba(0,0,0,0.05)',
+            }}
           >
-            <FiPlus size={16} />
-            <span>New Chat</span>
-          </motion.div>
-        </motion.button>
-      </div>
-      
-      {/* Chat history section */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
-        <AnimatePresence>
-          {orderedDateKeys.length > 0 ? (
-            <div>
-              {/* Chat stats summary */}
-              <div className="mb-3 px-2 py-1.5 text-xs flex justify-between items-center">
-                <span className={`${theme_classes.textSecondary} font-medium`}>
-                  {chatHistory.length} {chatHistory.length === 1 ? 'Conversation' : 'Conversations'}
-                </span>
-                {sortedChats.length > 0 && (
-                  <span className={`text-[10px] ${theme_classes.textMuted}`}>
-                    Last active: {getRelativeDate(sortedChats[0].timestamp)}
-                  </span>
-                )}
-              </div>
-              
-              {/* Date groups */}
-              {orderedDateKeys.map((date, dateIndex) => (
-                <motion.div 
-                  key={`date-${date}`} 
-                  className="mb-3"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: dateIndex * 0.05, duration: 0.2 }}
+            {/* Header section */}
+            <div className="px-3 pt-3 pb-2 flex items-center">
+              {/* Close button for mobile */}
+              {isMobile && (
+                <motion.button
+                  onClick={() => setSidebarOpen(false)}
+                  className={`p-1.5 rounded-md ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'} mr-2`}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <div className={`text-xs font-medium ${theme_classes.textMuted} px-2 py-1 flex items-center gap-1 mb-1 ${
-                    isDarkMode ? 'bg-slate-800/40' : 'bg-slate-100/60'
-                  } rounded-md`}>
-                    <FiClock size={12} />
-                    <span>{date}</span>
-                    <span className="ml-auto bg-slate-700/20 px-1.5 py-0.5 rounded-sm text-[9px]">
-                      {groupedHistory[date].length}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {groupedHistory[date].map((chat, index) => (
-                      <motion.button 
-                        key={`chat-${chat.id}-${index}`}
-                        initial={{ opacity: 0, x: -5 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: (dateIndex * 0.05) + (index * 0.03), duration: 0.2 }}
-                        onClick={() => {
-                          loadChat(chat.id);
-                          if (window.innerWidth < 640) setSidebarOpen(false);
-                        }}
-                        onMouseEnter={() => setHoveredChatId(chat.id)}
-                        onMouseLeave={() => setHoveredChatId(null)}
-                        className={`w-full text-left rounded-md py-1.5 px-2 text-sm relative ${theme_classes.hover} transition-all duration-200 ${
-                          currentChatId === chat.id 
-                            ? `${isDarkMode ? 'bg-indigo-500/20' : 'bg-indigo-500/10'} ${theme_classes.text}`
-                            : theme_classes.textSecondary
-                        }`}
-                        style={{
-                          borderLeft: currentChatId === chat.id 
-                            ? `2px solid ${isDarkMode ? '#8b5cf6' : '#6366f1'}`
-                            : '2px solid transparent',
-                        }}
-                        whileHover={{ x: 1 }}
-                        whileTap={{ scale: 0.98 }}
+                  <FiX size={18} className={theme_classes.textSecondary} />
+                </motion.button>
+              )}
+              
+              {/* Animated gradient new chat button */}
+              <motion.button 
+                onClick={() => {
+                  resetChat();
+                  if (isMobile) setSidebarOpen(false);
+                }}
+                onMouseEnter={() => setButtonHovered(true)}
+                onMouseLeave={() => setButtonHovered(false)}
+                className="w-full rounded-md py-2 px-3 text-sm flex items-center justify-center gap-2 mb-2 relative overflow-hidden"
+                style={{
+                  boxShadow: buttonHovered 
+                    ? isDarkMode 
+                      ? '0 4px 12px rgba(129, 140, 248, 0.3)' 
+                      : '0 4px 12px rgba(129, 140, 248, 0.2)'
+                    : isDarkMode 
+                      ? '0 2px 6px rgba(129, 140, 248, 0.2)' 
+                      : '0 2px 6px rgba(129, 140, 248, 0.1)',
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {/* Background gradient with animation */}
+                <motion.div 
+                  className="absolute inset-0"
+                  initial={{ backgroundPosition: "0% 50%" }}
+                  animate={{ 
+                    backgroundPosition: buttonHovered ? "100% 50%" : "0% 50%",
+                  }}
+                  transition={{ duration: 3, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }}
+                  style={{
+                    background: "linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899, #8b5cf6, #3b82f6)",
+                    backgroundSize: "300% 300%",
+                    filter: buttonHovered ? "brightness(1.1)" : "brightness(1)",
+                  }}
+                />
+                
+                {/* Gleam effect */}
+                <motion.div 
+                  className="absolute inset-0 opacity-30"
+                  initial={{ x: "-100%", skew: "-20deg" }}
+                  animate={{ x: "200%" }}
+                  transition={{ 
+                    duration: buttonHovered ? 1.5 : 0, 
+                    ease: "easeInOut", 
+                    repeat: Infinity, 
+                    repeatDelay: 2 
+                  }}
+                  style={{
+                    width: "50%",
+                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)",
+                    display: buttonHovered ? "block" : "none"
+                  }}
+                />
+                
+                {/* Button content */}
+                <motion.div
+                  className="relative flex items-center justify-center gap-2 text-white font-medium"
+                  animate={{ scale: buttonHovered ? 1.03 : 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <FiPlus size={16} />
+                  <span>New Chat</span>
+                </motion.div>
+              </motion.button>
+            </div>
+            
+            {/* Chat history section */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-2">
+              <AnimatePresence>
+                {orderedDateKeys.length > 0 ? (
+                  <div>
+                    {/* Chat stats summary */}
+                    <div className="mb-3 px-2 py-1.5 text-xs flex justify-between items-center">
+                      <span className={`${theme_classes.textSecondary} font-medium`}>
+                        {chatHistory.length} {chatHistory.length === 1 ? 'Conversation' : 'Conversations'}
+                      </span>
+                      {sortedChats.length > 0 && (
+                        <span className={`text-[10px] ${theme_classes.textMuted}`}>
+                          Last active: {getRelativeDate(sortedChats[0].timestamp)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Date groups */}
+                    {orderedDateKeys.map((date, dateIndex) => (
+                      <motion.div 
+                        key={`date-${date}`} 
+                        className="mb-3"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: dateIndex * 0.05, duration: 0.2 }}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center truncate mr-1">
-                            {currentChatId === chat.id ? (
-                              <HiOutlineSparkles
-                                size={13}
-                                className="mr-1.5 text-purple-400"
-                              />
-                            ) : (
-                              <FiMessageSquare 
-                                size={13} 
-                                className={`mr-1.5 ${hoveredChatId === chat.id ? 'text-indigo-400' : 'opacity-70'}`} 
-                              />
-                            )}
-                            <span className="truncate">{chat.title}</span>
-                          </div>
-                          
-                          {(hoveredChatId === chat.id || currentChatId === chat.id) && (
-                            <FiChevronRight size={14} className="flex-shrink-0 text-indigo-400" />
-                          )}
+                        <div className={`text-xs font-medium ${theme_classes.textMuted} px-2 py-1 flex items-center gap-1 mb-1 ${
+                          isDarkMode ? 'bg-slate-800/40' : 'bg-slate-100/60'
+                        } rounded-md`}>
+                          <FiClock size={12} />
+                          <span>{date}</span>
+                          <span className="ml-auto bg-slate-700/20 px-1.5 py-0.5 rounded-sm text-[9px]">
+                            {groupedHistory[date].length}
+                          </span>
                         </div>
-                      </motion.button>
+                        
+                        <div className="space-y-1">
+                          {groupedHistory[date].map((chat, index) => (
+                            <motion.button 
+                              key={`chat-${chat.id}-${index}`}
+                              initial={{ opacity: 0, x: -5 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: (dateIndex * 0.05) + (index * 0.03), duration: 0.2 }}
+                              onClick={() => {
+                                loadChat(chat.id);
+                                if (isMobile) setSidebarOpen(false);
+                              }}
+                              onMouseEnter={() => setHoveredChatId(chat.id)}
+                              onMouseLeave={() => setHoveredChatId(null)}
+                              className={`w-full text-left rounded-md py-1.5 px-2 text-sm relative ${theme_classes.hover} transition-all duration-200 ${
+                                currentChatId === chat.id 
+                                  ? `${isDarkMode ? 'bg-indigo-500/20' : 'bg-indigo-500/10'} ${theme_classes.text}`
+                                  : theme_classes.textSecondary
+                              }`}
+                              style={{
+                                borderLeft: currentChatId === chat.id 
+                                  ? `2px solid ${isDarkMode ? '#8b5cf6' : '#6366f1'}`
+                                  : '2px solid transparent',
+                              }}
+                              whileHover={{ x: 1 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center truncate mr-1">
+                                  {currentChatId === chat.id ? (
+                                    <HiOutlineSparkles
+                                      size={13}
+                                      className="mr-1.5 text-purple-400"
+                                    />
+                                  ) : (
+                                    <FiMessageSquare 
+                                      size={13} 
+                                      className={`mr-1.5 ${hoveredChatId === chat.id ? 'text-indigo-400' : 'opacity-70'}`} 
+                                    />
+                                  )}
+                                  <span className="truncate">{chat.title}</span>
+                                </div>
+                                
+                                {(hoveredChatId === chat.id || currentChatId === chat.id) && (
+                                  <FiChevronRight size={14} className="flex-shrink-0 text-indigo-400" />
+                                )}
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </motion.div>
                     ))}
                   </div>
-                </motion.div>
-              ))}
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`text-center ${theme_classes.textMuted} mt-6 mx-2 p-3 rounded-lg ${
+                      isDarkMode ? 'bg-slate-800/30' : 'bg-slate-100/60'
+                    }`}
+                  >
+                    <FiMessageSquare size={18} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No chat history yet</p>
+                    <p className="text-xs mt-1 opacity-70">Start a new conversation!</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`text-center ${theme_classes.textMuted} mt-6 mx-2 p-3 rounded-lg ${
-                isDarkMode ? 'bg-slate-800/30' : 'bg-slate-100/60'
-              }`}
-            >
-              <FiMessageSquare size={18} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No chat history yet</p>
-              <p className="text-xs mt-1 opacity-70">Start a new conversation!</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      
-      {/* Custom scrollbar styles */}
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: ${isDarkMode ? 'rgba(15, 23, 42, 0.1)' : 'rgba(241, 245, 249, 0.5)'};
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: ${isDarkMode ? 'rgba(79, 70, 229, 0.3)' : 'rgba(99, 102, 241, 0.3)'};
-          border-radius: 4px;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: ${isDarkMode ? 'rgba(79, 70, 229, 0.5)' : 'rgba(99, 102, 241, 0.5)'};
-        }
-      `}</style>
-    </motion.div>
+            
+            {/* Custom scrollbar styles */}
+            <style jsx global>{`
+              .custom-scrollbar::-webkit-scrollbar {
+                width: 4px;
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-track {
+                background: ${isDarkMode ? 'rgba(15, 23, 42, 0.1)' : 'rgba(241, 245, 249, 0.5)'};
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: ${isDarkMode ? 'rgba(79, 70, 229, 0.3)' : 'rgba(99, 102, 241, 0.3)'};
+                border-radius: 4px;
+              }
+              
+              .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: ${isDarkMode ? 'rgba(79, 70, 229, 0.5)' : 'rgba(99, 102, 241, 0.5)'};
+              }
+            `}</style>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

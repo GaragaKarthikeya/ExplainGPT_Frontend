@@ -9,11 +9,24 @@ import { Sidebar } from "./components/Sidebar";
 import { MessageList } from "./components/MessageList";
 import { ChatInput } from "./components/ChatInput";
 import { PromptLibrary } from "./components/PromptLibrary";
+import { TypingIndicator } from "./components/TypingIndicator";
 
 export default function ChatPage() {
   const [theme, setTheme] = useState<Theme>("dark");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
   const [isPromptBarOpen, setIsPromptBarOpen] = useState(false);
+  
+  // Handle responsive layout
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const { 
     messages, 
     input, 
@@ -70,28 +83,36 @@ export default function ChatPage() {
       />
 
       <div className="flex-1 overflow-hidden flex relative">
-        <AnimatePresence>
-          {sidebarOpen && (
-            <Sidebar 
-              theme={theme}
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-              resetChat={resetChat}
-              chatHistory={chatHistory}
-              loadChat={loadChat}
-              currentChatId={currentChatId}
-            />
-          )}
-        </AnimatePresence>
-
-        <div className={`flex-1 flex flex-col max-h-full relative ${theme === "dark" ? darkSecondary : lightSecondary} transition-colors duration-200`}>
+        <Sidebar 
+          theme={theme}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          resetChat={resetChat}
+          chatHistory={chatHistory}
+          loadChat={loadChat}
+          currentChatId={currentChatId}
+        />
+        
+        <div className={`flex-1 flex flex-col ${theme === "dark" ? darkSecondary : lightSecondary}`}
+          style={{
+            marginLeft: sidebarOpen ? undefined : 0,
+            transition: "margin-left 0.2s ease-in-out"
+          }}
+        >
           <MessageList 
             messages={messages}
             loading={loading}
             theme={theme}
             setInput={setInput}
           />
+        </div>
 
+        <div className="absolute bottom-0 left-0 right-0 flex justify-center"
+          style={{
+            paddingLeft: sidebarOpen ? '288px' : '0',
+            transition: "padding-left 0.2s ease-in-out"
+          }}
+        >
           <ChatInput 
             input={input}
             setInput={setInput}
@@ -99,6 +120,7 @@ export default function ChatPage() {
             sendMessage={sendMessage}
             theme={theme}
             togglePromptBar={togglePromptBar}
+            sidebarOpen={sidebarOpen}
           />
         </div>
 
