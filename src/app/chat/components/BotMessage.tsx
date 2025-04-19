@@ -13,9 +13,15 @@ import "katex/dist/katex.min.css";
 interface BotMessageProps {
   text: string;
   theme?: "dark" | "light";
+  animation?: {
+    jobId: string;
+    videoUrl?: string;
+    status?: "loading" | "complete" | "error";
+    error?: string;
+  };
 }
 
-export function BotMessage({ text, theme = "dark" }: BotMessageProps) {
+export function BotMessage({ text, theme = "dark", animation }: BotMessageProps) {
   const [staticText, setStaticText] = useState(text);
   const [newPortion, setNewPortion] = useState("");
   const [copied, setCopied] = useState<Record<string, boolean>>({});
@@ -58,6 +64,44 @@ export function BotMessage({ text, theme = "dark" }: BotMessageProps) {
 
   return (
     <div className="bot-message prose dark:prose-invert">
+      {animation && (
+        <div className={`animation-container my-4 rounded-lg overflow-hidden ${
+          isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
+        }`}>
+          {animation.status === "loading" && (
+            <div className="flex flex-col items-center justify-center p-6 space-y-4">
+              <div className="w-12 h-12 border-4 border-t-indigo-500 border-r-transparent border-b-indigo-500 border-l-transparent rounded-full animate-spin"></div>
+              <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                Generating your animation... This may take up to 30 seconds.
+              </p>
+            </div>
+          )}
+          
+          {animation.status === "error" && (
+            <div className="p-4 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-lg">
+              <p className="font-medium">Error generating animation</p>
+              <p className="text-sm">{animation.error || "An unknown error occurred"}</p>
+            </div>
+          )}
+          
+          {animation.status === "complete" && animation.videoUrl && (
+            <div className="animation-video">
+              <video 
+                src={animation.videoUrl} 
+                controls 
+                autoPlay 
+                loop
+                className="w-full rounded-lg"
+                poster="/assets/animation-poster.png"
+              />
+              <div className={`p-2 text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Animation ID: {animation.jobId}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeKatex]}

@@ -357,7 +357,11 @@ export function MessageList({
                       {isUser ? (
                         <div className="whitespace-pre-wrap">{msg.text}</div>
                       ) : (
-                        <BotMessage text={msg.text} theme={theme} />
+                        <BotMessage 
+                          text={msg.text} 
+                          theme={theme} 
+                          animation={msg.animation}
+                        />
                       )}
                     </div>
                   </div>

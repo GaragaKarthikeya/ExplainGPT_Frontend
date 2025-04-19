@@ -125,6 +125,16 @@ export function useChat() {
       timestamp: getCurrentDateTime() 
     };
     
+    // Check if message is requesting animation (starts with /animate or similar)
+    const isAnimationRequest = state.input.trim().toLowerCase().startsWith("!animate");
+    if (isAnimationRequest) {
+      botMessagePlaceholder.text = "Generating animation, please wait...";
+      botMessagePlaceholder.animation = {
+        jobId: '', // Will be filled later
+        status: "loading"
+      };
+    }
+    
     const updatedMessages = [...state.messages, userMessage, botMessagePlaceholder];
     
     setState(prev => ({
@@ -138,6 +148,134 @@ export function useChat() {
     try {
       window.dispatchEvent(new CustomEvent('resetTextareaHeight'));
       
+      // Check if this is an animation request
+      const isAnimationRequest = state.input.trim().toLowerCase().startsWith("!animate");
+      
+      if (isAnimationRequest) {
+        // Extract animation prompt (remove the !animate command)
+        const prompt = state.input.trim().substring("!animate".length).trim();
+        const complexity = 3; // Default complexity
+        
+        try {
+          const animationResult = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: state.input,
+              history: updatedMessages.filter(m => m.text !== ""),
+              isAnimationRequest: true,
+              animationPrompt: prompt,
+              complexity
+            }),
+          });
+          
+          if (!animationResult.ok) {
+            throw new Error(`Animation API error: ${animationResult.status}`);
+          }
+          
+          const animationData = await animationResult.json();
+          
+          // Update the message with animation data
+          setState(prev => {
+            const updatedMessages = prev.messages.map(msg => 
+              msg.id === botMessagePlaceholder.id
+                ? { 
+                    ...msg, 
+                    text: `I've generated an animation for "${prompt}". It should appear below shortly.`,
+                    animation: {
+                      jobId: animationData.jobId,
+                      status: "loading" as "loading"
+                    }
+                  }
+                : msg
+            );
+            
+            saveCurrentChat(updatedMessages);
+            return { ...prev, messages: updatedMessages, loading: false };
+          });
+          
+          // Start polling for animation status
+          const pollInterval = setInterval(async () => {
+            try {
+              const statusResult = await fetch(`/api/animation-status?jobId=${animationData.jobId}`);
+              const statusData = await statusResult.json();
+              
+              if (statusData.success && statusData.videoUrl) {
+                // Animation is ready
+                clearInterval(pollInterval);
+                
+                setState(prev => {
+                  const finalMessages = prev.messages.map(msg => 
+                    msg.id === botMessagePlaceholder.id
+                      ? { 
+                          ...msg,
+                          animation: {
+                            jobId: animationData.jobId,
+                            videoUrl: statusData.videoUrl,
+                            status: "complete" as "complete"
+                          }
+                        }
+                      : msg
+                  );
+                  
+                  saveCurrentChat(finalMessages);
+                  return { ...prev, messages: finalMessages };
+                });
+              } else if (statusData.error) {
+                // Animation failed
+                clearInterval(pollInterval);
+                
+                setState(prev => {
+                  const finalMessages = prev.messages.map(msg => 
+                    msg.id === botMessagePlaceholder.id
+                      ? { 
+                          ...msg, 
+                          animation: {
+                            jobId: animationData.jobId,
+                            status: "error" as "error",
+                            error: statusData.error
+                          }
+                        }
+                      : msg
+                  );
+                  
+                  saveCurrentChat(finalMessages);
+                  return { ...prev, messages: finalMessages };
+                });
+              }
+            } catch (error) {
+              console.error("Error polling animation status:", error);
+            }
+          }, 3000); // Check every 3 seconds
+          
+          // Return early - we don't need the normal chat flow for animations
+          return;
+        } catch (error) {
+          console.error("Animation generation error:", error);
+          
+          setState(prev => {
+            const errorMessages = prev.messages.map(msg => 
+              msg.id === botMessagePlaceholder.id
+                ? { 
+                    ...msg, 
+                    text: `Sorry, there was an error generating your animation: ${error.message}`,
+                    animation: {
+                      jobId: "error_" + Date.now().toString(),
+                      status: "error" as "error",
+                      error: error.message
+                    }
+                  }
+                : msg
+            );
+            
+            return { ...prev, messages: errorMessages, loading: false };
+          });
+          
+          return;
+        }
+      }
+      
+      // Regular chat message flow
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -13,6 +13,12 @@ export interface Message {
   text: string;
   sender: "user" | "bot";
   timestamp: string;
+  animation?: {
+    jobId: string;
+    videoUrl?: string;
+    status?: "loading" | "complete" | "error";
+    error?: string;
+  };
 }
 
 export function getCurrentDateTime(): string {

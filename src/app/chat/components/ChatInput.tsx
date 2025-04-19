@@ -1,9 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
-import { FiSend } from "react-icons/fi";
 import { Theme, getThemeClasses } from "@/lib/utils";
-import { motion, AnimatePresence, useScroll } from "framer-motion";
 
 interface ChatInputProps {
   input: string;
@@ -13,6 +11,7 @@ interface ChatInputProps {
   theme: Theme;
   togglePromptBar?: () => void;
   sidebarOpen?: boolean;
+  maxInputLength?: number;
 }
 
 export function ChatInput({ 
@@ -22,14 +21,14 @@ export function ChatInput({
   sendMessage, 
   theme,
   togglePromptBar,
-  sidebarOpen = false
+  sidebarOpen = false,
+  maxInputLength = 4000
 }: ChatInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [focused, setFocused] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
-  const { scrollY: currentScroll } = useScroll();
+  const [inputHovered, setInputHovered] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [isComposing, setIsComposing] = useState(false); // For IME input support
   
   const isDarkMode = theme === "dark";
   const isMobile = viewportSize.width > 0 && viewportSize.width < 640;
@@ -48,11 +47,6 @@ export function ChatInput({
     return () => window.removeEventListener('resize', updateViewportDimensions);
   }, []);
   
-  // Track scroll position
-  useEffect(() => {
-    return currentScroll.onChange(latest => setScrollY(latest));
-  }, [currentScroll]);
-
   // Auto-resize textarea
   useEffect(() => {
     const textarea = inputRef.current;
@@ -62,28 +56,19 @@ export function ChatInput({
       textarea.style.height = 'auto';
       const newHeight = Math.min(
         textarea.scrollHeight,
-        300 // Max height in pixels
+        200 // Max height in pixels
       );
       textarea.style.height = `${newHeight}px`;
     };
     
     adjustHeight();
-    
-    // Reset height when event triggered
-    const resetHeightListener = () => {
-      if (textarea) {
-        textarea.style.height = 'auto';
-      }
-    };
-    
-    window.addEventListener('resetTextareaHeight', resetHeightListener);
-    return () => {
-      window.removeEventListener('resetTextareaHeight', resetHeightListener);
-    };
   }, [input]);
   
   // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Don't trigger shortcut actions during IME composition
+    if (isComposing) return;
+    
     // Submit on Enter without shift (for mobile, require shift+enter for newline)
     if (e.key === 'Enter' && !e.shiftKey && (!isMobile || (isMobile && input.trim().length > 0))) {
       e.preventDefault();
@@ -103,6 +88,15 @@ export function ChatInput({
       e.preventDefault();
       setInput('');
       inputRef.current?.focus();
+    }
+    
+    // Keyboard shortcuts for advanced users
+    if (e.ctrlKey || e.metaKey) {
+      // Ctrl+Enter or Cmd+Enter to send
+      if (e.key === 'Enter' && !loading && input.trim()) {
+        e.preventDefault();
+        sendMessage();
+      }
     }
   };
   
@@ -133,119 +127,180 @@ export function ChatInput({
     }
   }, [isMobile]);
   
-  // Support emoji picker toggle
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  // Animation mode management with hidden prefix
+  const [animationMode, setAnimationMode] = useState(false);
+  const [internalInput, setInternalInput] = useState("");
   
-  const toggleEmojiPicker = useCallback(() => {
-    setShowEmojiPicker(prev => !prev);
-  }, []);
+  // Set up internal state to handle hidden animate prefix
+  useEffect(() => {
+    // Update internal state when input changes from outside this component
+    setInternalInput(input.startsWith("!animate ") ? input.substring(9) : input);
+    
+    // Sync animation mode with the actual input content
+    const isAnimateCommand = input.startsWith("!animate ");
+    if (isAnimateCommand !== animationMode) {
+      setAnimationMode(isAnimateCommand);
+    }
+  }, [input]);
+  
+  // Handle the animation toggle without showing !animate in the UI
+  const handleAnimationClick = useCallback(() => {
+    const newAnimationMode = !animationMode;
+    
+    if (newAnimationMode) {
+      // Add hidden animation command (user doesn't see this)
+      const visibleText = animationMode ? internalInput : input;
+      setInput(`!animate ${visibleText}`);
+    } else {
+      // Restore the input the user was actually seeing
+      setInput(internalInput);
+    }
+    
+    // Set the animation mode after modifying input
+    setAnimationMode(newAnimationMode);
+    
+    // Focus the input after toggling
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 10);
+  }, [input, setInput, animationMode, internalInput]);
+  
+  // Override onChange handler to keep animation prefix hidden
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    
+    if (newValue.length <= maxInputLength) {
+      if (animationMode) {
+        // Update the internal value the user sees
+        setInternalInput(newValue);
+        // Keep the !animate prefix in the actual input
+        setInput(`!animate ${newValue}`);
+      } else {
+        // Normal behavior when not in animation mode
+        setInput(newValue);
+      }
+    }
+  }, [animationMode, setInput, maxInputLength]);
   
   return (
-    <div 
-      className={`w-full max-w-3xl px-4 pb-6`}
-      style={{
-        position: 'relative',
-        zIndex: focused || hovered ? 50 : 40
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className={`relative rounded-xl overflow-hidden p-1 transition-shadow ${
-          focused 
-            ? (isDarkMode ? 'shadow-[0_0_0_1px_rgba(99,102,241,0.4),0_4px_20px_rgba(0,0,0,0.3)]' : 'shadow-[0_0_0_1px_rgba(99,102,241,0.5),0_4px_20px_rgba(0,0,0,0.08)]') 
-            : (isDarkMode ? 'shadow-md shadow-black/30' : 'shadow-lg shadow-slate-200/70')
-        }`}
-        style={{
-          background: isDarkMode 
-            ? 'linear-gradient(to bottom, rgba(15, 23, 42, 0.5), rgba(30, 41, 59, 0.5))' 
-            : 'linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.8))',
-          backdropFilter: 'blur(10px)',
-          border: `1px solid ${
-            isDarkMode 
-              ? (focused ? 'rgba(99, 102, 241, 0.3)' : 'rgba(30, 41, 59, 0.6)') 
-              : (focused ? 'rgba(99, 102, 241, 0.3)' : 'rgba(241, 245, 249, 0.9)')
-          }`
-        }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+    <div className="w-full max-w-3xl px-4 pb-6">
+      <div 
+        className={`relative rounded-lg ${
+          isDarkMode 
+            ? 'bg-gray-800 border border-gray-700' 
+            : 'bg-white border border-gray-200'
+        } shadow-sm`}
+        onMouseEnter={() => setInputHovered(true)}
+        onMouseLeave={() => setInputHovered(false)}
       >
-        <div className="flex items-end space-x-2">
+        <div className="flex items-center">
+          {/* Animation toggle button */}
+          <button
+            onClick={handleAnimationClick}
+            disabled={loading}
+            className={`p-2.5 m-1 rounded-md flex items-center justify-center ${
+              animationMode 
+                ? (isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-600') 
+                : (isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')
+            }`}
+            title={animationMode ? "Animation mode ON" : "Animation mode OFF"}
+          >
+            <svg 
+              width="18" 
+              height="18" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M15 10L19.5528 7.72361C20.2177 7.39116 21 7.87465 21 8.61803V15.382C21 16.1253 20.2177 16.6088 19.5528 16.2764L15 14M5 18H13C14.1046 18 15 17.1046 15 16V8C15 6.89543 14.1046 6 13 6H5C3.89543 6 3 6.89543 3 8V16C3 17.1046 3.89543 18 5 18Z" />
+            </svg>
+            
+            {animationMode && (
+              <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-blue-500"></span>
+            )}
+          </button>
+          
+          {/* Textarea */}
           <div className="flex-1 min-w-0">
             <textarea
               ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+              value={animationMode ? internalInput : input}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={placeholders[placeholderIndex]}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              placeholder={animationMode ? "Describe your animation..." : placeholders[placeholderIndex]}
               rows={1}
-              className={`w-full p-3 resize-none bg-transparent border-0 outline-none ${theme_classes.text} ${
-                isDarkMode ? 'placeholder-gray-400' : 'placeholder-gray-500'
+              maxLength={maxInputLength}
+              className={`w-full py-3 px-2 resize-none bg-transparent border-0 outline-none ${
+                isDarkMode ? 'text-gray-100 placeholder-gray-400' : 'text-gray-800 placeholder-gray-500'
               }`}
               style={{
                 minHeight: '24px',
-                maxHeight: '300px',
-                lineHeight: '1.5',
+                maxHeight: '200px'
               }}
               disabled={loading}
-              aria-disabled={loading}
+              spellCheck="true"
             />
           </div>
           
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            whileHover={{ scale: 1.05 }}
+          {/* Send button */}
+          <button
             onClick={() => !loading && input.trim() && sendMessage()}
             disabled={loading || !input.trim()}
-            className="p-3 rounded-lg flex-shrink-0 focus:outline-none transition-colors"
-            style={{
-              background: input.trim() && !loading
-                ? "linear-gradient(135deg, #3b82f6, #8b5cf6)"
-                : isDarkMode ? "rgba(51, 65, 85, 0.5)" : "rgba(226, 232, 240, 0.7)",
-              opacity: input.trim() && !loading ? 1 : 0.7,
-              cursor: input.trim() && !loading ? 'pointer' : 'not-allowed'
-            }}
+            className={`p-2 m-1 rounded-md flex items-center justify-center transition-colors ${
+              input.trim() && !loading
+                ? (isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white')
+                : (isDarkMode ? 'text-gray-500 bg-gray-700' : 'text-gray-400 bg-gray-100')
+            }`}
             aria-label="Send message"
           >
-            <FiSend 
-              className={input.trim() && !loading 
-                ? "text-white" 
-                : isDarkMode ? "text-gray-400" : "text-gray-500"
-              } 
-              size={18} 
-            />
-          </motion.button>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="18" 
+              height="18" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
         </div>
         
-        <AnimatePresence>
-          {focused && (
-            <motion.div 
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 5 }}
-              transition={{ duration: 0.2 }}
-              className={`px-3 py-2 flex justify-between text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
-              style={{
-                borderTop: `1px solid ${isDarkMode ? 'rgba(51, 65, 85, 0.5)' : 'rgba(226, 232, 240, 0.7)'}`,
-              }}
-            >
+        {/* Info bar */}
+        {focused && (
+          <div 
+            className={`px-3 py-1.5 text-xs border-t ${
+              isDarkMode 
+                ? 'border-gray-700 text-gray-400' 
+                : 'border-gray-200 text-gray-500'
+            }`}
+          >
+            <div className="flex justify-between">
               <div>
                 <span>Enter to send</span>
-                <span className="opacity-60 mx-1">•</span>
+                <span className="mx-1.5">·</span>
                 <span>Shift+Enter for new line</span>
-                <span className="opacity-60 mx-1">•</span>
-                <span>/ for prompts</span>
               </div>
-              {!isMobile && input.trim().length > 0 && (
-                <div>{input.trim().length} characters</div>
+              {!isMobile && (input.trim().length > 0 || internalInput.trim().length > 0) && (
+                <div>{animationMode ? internalInput.trim().length : input.trim().length} chars</div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

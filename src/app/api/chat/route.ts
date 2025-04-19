@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateAnimation } from "@/lib/manimApi";
 
 /**
  * Neural Trinity AI API Route Handler
@@ -220,11 +221,49 @@ interface ChatRequestBody {
 /**
  * Main API route handler
  */
+/**
+ * Extended request body interface with animation support
+ */
+interface ChatRequestBody {
+  message: string;
+  history: MessageHistory;
+  username?: string;
+  isAnimationRequest?: boolean;
+  animationPrompt?: string;
+  complexity?: number;
+}
+
 export async function POST(req: Request) {
   try {
     // Parse and validate request body
     const body = await req.json() as ChatRequestBody;
-    const { message, history = [], username = "GaragaKarthikeya" } = body;
+    const { 
+      message, 
+      history = [], 
+      username = "GaragaKarthikeya", 
+      isAnimationRequest = false,
+      animationPrompt = "",
+      complexity = 3
+    } = body;
+    
+    // Handle animation generation requests
+    if (isAnimationRequest) {
+      console.log(`Processing animation request: "${animationPrompt}" with complexity ${complexity}`);
+      
+      try {
+        const result = await generateAnimation({ prompt: animationPrompt, complexity });
+        return NextResponse.json({ 
+          success: true, 
+          jobId: result.job_id 
+        });
+      } catch (error) {
+        console.error("Animation generation error:", error);
+        return NextResponse.json({ 
+          success: false, 
+          error: error.message || "Failed to generate animation" 
+        }, { status: 500 });
+      }
+    }
     
     if (!message || typeof message !== "string") {
       return NextResponse.json(
